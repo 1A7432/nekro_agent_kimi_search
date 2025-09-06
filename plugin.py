@@ -17,7 +17,7 @@ from nekro_agent.api import core
 from nekro_agent.api.plugin import ConfigBase, NekroPlugin, SandboxMethodType
 from nekro_agent.api.schemas import AgentCtx
 
-plugin = NekroPlugin(
+kimi_search_plugin = NekroPlugin(
     name="Kimi联网搜索插件",
     module_name="kimi_search_plugin",
     description="基于 Moonshot AI Kimi 模型内置 $web_search 工具的第三方联网搜索插件，支持实时信息获取",
@@ -27,7 +27,7 @@ plugin = NekroPlugin(
 )
 
 
-@plugin.mount_config()
+@kimi_search_plugin.mount_config()
 class KimiSearchConfig(ConfigBase):
     """Kimi 联网搜索配置"""
 
@@ -65,7 +65,7 @@ class KimiSearchConfig(ConfigBase):
 
 
 # 获取配置
-config: KimiSearchConfig = plugin.get_config(KimiSearchConfig)
+config: KimiSearchConfig = kimi_search_plugin.get_config(KimiSearchConfig)
 
 # 缓存变量
 _last_query = None
@@ -186,7 +186,7 @@ async def _chat_with_web_search(query: str) -> str:
         return f"[Kimi] 搜索失败: {e!s}"
 
 
-@plugin.mount_sandbox_method(
+@kimi_search_plugin.mount_sandbox_method(
     SandboxMethodType.AGENT,
     name="Kimi联网搜索",
     description="使用 Moonshot AI Kimi 模型内置联网搜索功能获取实时信息",
@@ -215,7 +215,7 @@ async def kimi_search(_ctx: AgentCtx, query: str) -> str:
     return result
 
 
-@plugin.mount_cleanup_method()
+@kimi_search_plugin.mount_cleanup_method()
 async def clean_up():
     """清理插件"""
     global _last_query, _last_call_time
