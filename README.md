@@ -32,5 +32,5 @@ MIT License
 
 ---
 
-作者: 1A7432  
+作者: dirac  
 版本: v0.1.0

@@ -22,7 +22,7 @@ kimi_search_plugin = NekroPlugin(
     module_name="kimi_search_plugin",
     description="基于 Moonshot AI Kimi 模型内置 $web_search 工具的第三方联网搜索插件，支持实时信息获取",
     version="0.1.0",
-    author="1A7432",
+    author="dirac",
     url="https://github.com/1A7432/nekro_agent_kimi_search",
 )
 
