@@ -45,7 +45,7 @@ class KimiSearchConfig(ConfigBase):
     MODEL: str = Field(
         default="kimi-k2-0905-preview",
         title="使用的模型",
-        description="用于联网搜索的 Kimi 模型，推荐使用 kimi-k2-0905-preview（支持256K上下文）",
+        description="用于联网搜索的 Kimi 模型，推荐使用 kimi-k2.6（支持长上下文）",
     )
     THROTTLE_TIME: int = Field(
         default=10,
@@ -108,16 +108,19 @@ async def _chat_with_web_search(query: str) -> str:
     ]
 
     try:
-        async with httpx.AsyncClient(proxies=proxy, timeout=120.0) as client:
+        async with httpx.AsyncClient(proxy=proxy, timeout=120.0) as client:
             finish_reason = None
 
             while finish_reason is None or finish_reason == "tool_calls":
                 # 发送请求
+                # 注意：使用 $web_search 时必须禁用模型的思考能力 (thinking)
+                # 参考文档: https://platform.kimi.com/docs/guide/use-web-search
                 data = {
                     "model": config.MODEL,
                     "messages": messages,
                     "temperature": config.TEMPERATURE,
                     "max_tokens": config.MAX_TOKENS,
+                    "thinking": {"type": "disabled"},
                     "tools": [
                         {
                             "type": "builtin_function",
@@ -136,6 +139,12 @@ async def _chat_with_web_search(query: str) -> str:
 
                 if response.status_code != 200:
                     error_msg = f"API 请求失败，状态码: {response.status_code}"
+                    try:
+                        err_detail = response.json().get("error", {})
+                        if err_detail:
+                            error_msg += f"，详情: {err_detail.get('message', '')}"
+                    except Exception:
+                        pass
                     if response.status_code == 401:
                         error_msg += "，请检查 API Key 是否正确"
                     elif response.status_code == 429:
@@ -143,6 +152,10 @@ async def _chat_with_web_search(query: str) -> str:
                     return f"[Kimi] {error_msg}"
 
                 result = response.json()
+
+                if "error" in result:
+                    err = result["error"]
+                    return f"[Kimi] API 错误: {err.get('message', err)}"
 
                 if "choices" not in result or not result["choices"]:
                     return "[Kimi] API 响应格式异常，未找到搜索结果"
@@ -152,9 +165,18 @@ async def _chat_with_web_search(query: str) -> str:
 
                 if finish_reason == "tool_calls":
                     # 处理工具调用
-                    messages.append(choice["message"])
+                    # 按照官方文档建议，手动构造 assistant message，确保包含 reasoning_content 字段
+                    msg = choice["message"]
+                    message_dict = {
+                        "role": "assistant",
+                        "content": msg.get("content", ""),
+                        "tool_calls": msg["tool_calls"],
+                    }
+                    if "reasoning_content" in msg:
+                        message_dict["reasoning_content"] = msg["reasoning_content"]
+                    messages.append(message_dict)
 
-                    for tool_call in choice["message"]["tool_calls"]:
+                    for tool_call in msg["tool_calls"]:
                         tool_call_name = tool_call["function"]["name"]
                         tool_call_arguments = json.loads(
                             tool_call["function"]["arguments"],
