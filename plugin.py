@@ -87,6 +87,10 @@ async def _chat_with_web_search(query: str) -> str:
     if proxy and not proxy.startswith("http"):
         proxy = f"http://{proxy}"
 
+    # 如果代理为空字符串，httpx 会报错，需要转为 None
+    if not proxy:
+        proxy = None
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
