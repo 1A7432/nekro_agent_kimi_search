@@ -21,7 +21,7 @@ kimi_search_plugin = NekroPlugin(
     name="Kimi联网搜索插件",
     module_name="kimi_search_plugin",
     description="基于 Moonshot AI Kimi 模型内置 $web_search 工具的第三方联网搜索插件，支持实时信息获取",
-    version="0.1.0",
+    version="0.1.1",
     author="dirac",
     url="https://github.com/1A7432/nekro_agent_kimi_search",
 )
@@ -56,11 +56,6 @@ class KimiSearchConfig(ConfigBase):
         default=32768,
         title="最大返回Token数",
         description="搜索结果的最大 Token 数量",
-    )
-    TEMPERATURE: float = Field(
-        default=0.6,
-        title="模型温度",
-        description="控制搜索结果的随机性，值越小结果越确定",
     )
 
 
@@ -115,10 +110,11 @@ async def _chat_with_web_search(query: str) -> str:
                 # 发送请求
                 # 注意：使用 $web_search 时必须禁用模型的思考能力 (thinking)
                 # 参考文档: https://platform.kimi.com/docs/guide/use-web-search
+                # 注意：kimi-k2.6 在禁用 thinking 时 temperature 固定为 0.6，不可配置
                 data = {
                     "model": config.MODEL,
                     "messages": messages,
-                    "temperature": config.TEMPERATURE,
+                    "temperature": 0.6,
                     "max_tokens": config.MAX_TOKENS,
                     "thinking": {"type": "disabled"},
                     "tools": [
